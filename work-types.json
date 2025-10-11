@@ -1,0 +1,64 @@
+{
+  "types": [
+    {
+      "id": "concrete_beam",
+      "name": "คอนกรีตบีม",
+      "estimated_time": 45,
+      "description": "ยกและติดตั้งคอนกรีตบีม"
+    },
+    {
+      "id": "concrete_slab",
+      "name": "พื้นคอนกรีต",
+      "estimated_time": 60,
+      "description": "ยกและเทพื้นคอนกรีต"
+    },
+    {
+      "id": "concrete_column",
+      "name": "เสาคอนกรีต",
+      "estimated_time": 30,
+      "description": "ยกและติดตั้งเสาคอนกรีต"
+    },
+    {
+      "id": "steel_rebar",
+      "name": "เหล็กเสริม",
+      "estimated_time": 20,
+      "description": "ยกและจัดวางเหล็กเสริม"
+    },
+    {
+      "id": "formwork",
+      "name": "แม่พิมพ์",
+      "estimated_time": 40,
+      "description": "ยกและติดตั้งแม่พิมพ์"
+    },
+    {
+      "id": "raw_materials",
+      "name": "วัสดุดิบ",
+      "estimated_time": 15,
+      "description": "ยกวัสดุดิบทั่วไป"
+    },
+    {
+      "id": "equipment",
+      "name": "อุปกรณ์ก่อสร้าง",
+      "estimated_time": 25,
+      "description": "ยกอุปกรณ์ก่อสร้างขนาดใหญ่"
+    },
+    {
+      "id": "scaffolding",
+      "name": "ไม้รองเท้า",
+      "estimated_time": 35,
+      "description": "ยกและติดตั้งไม้รองเท้า"
+    },
+    {
+      "id": "precast_panels",
+      "name": "แผ่นผนังสำเร็จ",
+      "estimated_time": 50,
+      "description": "ยกและติดตั้งแผ่นผนังสำเร็จ"
+    },
+    {
+      "id": "finished_products",
+      "name": "ผลิตภัณฑ์สำเร็จรูป",
+      "estimated_time": 55,
+      "description": "ยกผลิตภัณฑ์มีส่วนประกอบสำหรับใช้งาน"
+    }
+  ]
+}

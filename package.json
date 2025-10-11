@@ -1,0 +1,23 @@
+{
+  "scripts": {
+    "build": "cd precast-api && npm run build",
+    "start": "cd precast-api && npm start",
+    "dev": "cd precast-api && npm run dev"
+  },
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.15.5",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "rechart": "^0.0.1",
+    "recharts": "^3.2.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14"
+  }
+}
