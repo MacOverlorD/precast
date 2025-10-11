@@ -84,10 +84,18 @@ export const api = {
         headers['Authorization'] = `Bearer ${token}`;
       }
       const response = await fetch(`${API_BASE}/cranes`, { headers });
-      if (!response.ok) throw new Error('Failed to fetch cranes');
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const err = new Error(`Failed to fetch cranes: ${response.status} ${response.statusText} ${text}`.trim());
+        // attach status for callers to inspect
+  (err as unknown as { status?: number }).status = response.status;
+        throw err;
+      }
       return response.json();
     } catch (error) {
-      console.error('Error fetching cranes:', error);
+      // Avoid noisy console errors for unauthorized guest reads; callers handle the error
+      const status = (error as unknown as { status?: number }).status;
+      if (status && status !== 401) console.error('Error fetching cranes:', error);
       throw error;
     }
   },

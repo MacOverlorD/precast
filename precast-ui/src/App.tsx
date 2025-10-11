@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { ResponsiveContainer, PieChart as RPieChart, Pie, Cell, Tooltip as ReTooltip, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { api, type Crane, type HistoryItem, type Booking, type QueueItem, type BookingCreateData, type WorkLog, type WorkType } from "./api";
 
@@ -204,7 +204,7 @@ function Topbar({ right, title }: { right?: React.ReactNode; title?: string }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }){
-  return <div className="min-h-screen bg-slate-50">{children}</div>;
+  return <div className="min-h-screen bg-slate-50 text-black">{children}</div>;
 }
 
 // Timer component - properly defined as a React component
@@ -866,7 +866,7 @@ function CraneTable({ crane, bookings, onStart, onStop, onRollback, onDelete, sh
               <TableHead className="w-52">เวลา</TableHead>
               <TableHead className="w-40">สถานะ</TableHead>
               {showActions && <TableHead className="w-[220px]">เริ่มต้น/หยุดการทำงาน</TableHead>}
-              <TableHead className="dropdown-cell">Dropdown</TableHead>
+              {showActions && <TableHead className="dropdown-cell">Dropdown</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -937,11 +937,13 @@ function CraneTable({ crane, bookings, onStart, onStop, onRollback, onDelete, sh
                         </div>
                       </TableCell>
                     )}
-                    <TableCell className="dropdown-cell">
-                      <button className="caret" onClick={() => toggleDropdown(rowKey)} aria-expanded={openDropdowns.has(rowKey)}>
-                        <span>▾</span>
-                      </button>
-                    </TableCell>
+                    {showActions && (
+                      <TableCell className="dropdown-cell">
+                        <button className="caret" onClick={() => toggleDropdown(rowKey)} aria-expanded={openDropdowns.has(rowKey)}>
+                          <span>▾</span>
+                        </button>
+                      </TableCell>
+                    )}
                   </TableRow>,
                   renderWorkSummaryDetails(item, rowKey)
                 ];
@@ -1199,10 +1201,68 @@ function Booking({
 
   const canApprove = user?.role === 'manager' || user?.role === 'admin';
 
+  // Booking work status summary (make Booking tab consistent with Home)
+  const bookingWorkStats = useMemo(() => {
+    const approvedBookings = bookings.filter(b => b.status === 'อนุมัติ');
+    const allQueueItems = cranes.flatMap(c => c.queue.filter(q => q.booking_id));
+
+    const started = new Map<string, boolean>();
+    const working = new Map<string, boolean>();
+    const completed = new Map<string, boolean>();
+
+    allQueueItems.forEach(item => {
+      if (item.booking_id) {
+        started.set(item.booking_id, true);
+        if (item.status === 'working') working.set(item.booking_id, true);
+        if (item.status === 'success') completed.set(item.booking_id, true);
+      }
+    });
+
+    return {
+      totalApproved: approvedBookings.length,
+      started: started.size,
+      currentlyWorking: working.size,
+      completed: completed.size,
+      pending: Math.max(0, approvedBookings.length - started.size)
+    };
+  }, [bookings, cranes]);
+
   return (
     <main className="p-6 space-y-4">
       <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-amber-50 text-amber-700">จองคิว</div>
 
+      {/* Make Booking tab show the same booking summary as Home */}
+      {bookingWorkStats.totalApproved > 0 && (
+        <Card className="rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base">สถานะการทำงานจากการจอง</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-xl font-semibold text-slate-700">{bookingWorkStats.totalApproved}</div>
+                <div className="text-xs text-slate-600">การจองอนุมัติ</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-xl font-semibold text-blue-700">{bookingWorkStats.started}</div>
+                <div className="text-xs text-blue-600">เริ่มงานแล้ว</div>
+              </div>
+              <div className="text-center p-3 bg-sky-50 rounded-lg">
+                <div className="text-xl font-semibold text-sky-700">{bookingWorkStats.currentlyWorking}</div>
+                <div className="text-xs text-sky-600">กำลังทำงาน</div>
+              </div>
+              <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                <div className="text-xl font-semibold text-emerald-700">{bookingWorkStats.completed}</div>
+                <div className="text-xs text-emerald-600">เสร็จแล้ว</div>
+              </div>
+              <div className="text-center p-3 bg-amber-50 rounded-lg">
+                <div className="text-xl font-semibold text-amber-700">{bookingWorkStats.pending}</div>
+                <div className="text-xs text-amber-600">รอเริ่มงาน</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Tab navigation */}
       <div className="flex gap-2 border-b mb-4">
         <Button variant={selectedTab === "create" ? "secondary" : "outline"} size="sm" onClick={() => setSelectedTab("create")}>
@@ -2360,7 +2420,7 @@ function HomeTop({ user, onLogout, onChangeTab, tab }: { user: { name: string; r
 // APP (single default export)
 // =================================================
 export default function PrecastApp(){
-  const [screen, setScreen] = useState<"landing" | "login" | "home" | "work-timer">("login");
+  const [screen, setScreen] = useState<"landing" | "login" | "guest" | "home" | "work-timer">("login");
   const [user, setUser] = useState<{name: string; role: UserRole} | null>(null);
   const [tab, setTab] = useState("booking");
 
@@ -2499,6 +2559,39 @@ export default function PrecastApp(){
   const [error, setError] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
+  // Guest view state (must be unconditional hooks)
+  const [guestCranes, setGuestCranes] = useState<Crane[] | null>(null);
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
+
+  // Load guest cranes (read-only) and auto-refresh when viewing guest screen
+  const loadGuestCranes = useCallback(async () => {
+    try {
+      setGuestLoading(true);
+      setGuestError(null);
+      const data = await api.getCranes(undefined);
+      setGuestCranes(data);
+    } catch (err) {
+      // If backend requires auth, show a friendly message and fall back to sample data
+      const status = (err as unknown as { status?: number }).status;
+      if (status === 401) {
+        setGuestError('เซิร์ฟเวอร์ต้องการการยืนยันตัวตน (401) — แสดงตัวอย่างแทน');
+        setGuestCranes(initialCranes);
+      } else {
+        setGuestError(err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลเครนได้');
+      }
+    } finally {
+      setGuestLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (screen !== 'guest') return;
+    loadGuestCranes();
+    const id = setInterval(loadGuestCranes, 30000);
+    return () => clearInterval(id);
+  }, [screen, loadGuestCranes]);
+
   // Load initial data from API
   useEffect(() => {
     const loadData = async () => {
@@ -2533,7 +2626,7 @@ export default function PrecastApp(){
     if (screen === "home") {
       loadData();
     }
-  }, [screen]);
+  }, [screen, authToken]);
 
   // API-based task operations
   async function startTask(craneId: string, ord: number){
@@ -2757,17 +2850,17 @@ export default function PrecastApp(){
         <Topbar right={<Button onClick={()=>setScreen("login")}><LogIn className="h-4 w-4 mr-2"/>Login</Button>} />
 
         {/* Hero Section */}
-        <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white overflow-hidden">
-          <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative bg-gradient-to-br from-blue-100 via-blue-200 to-indigo-100 overflow-hidden">
+          <div className="absolute inset-0 bg-white/40"></div>
           <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-24">
             <div className="text-center">
-              <h1 className="text-4xl lg:text-6xl font-bold mb-6">
+              <h1 className="text-4xl lg:text-6xl font-bold mb-6 text-black">
                 ระบบจัดการเครน
-                <span className="block text-2xl lg:text-3xl font-normal text-blue-100 mt-2">
+                <span className="block text-2xl lg:text-3xl font-normal text-slate-700 mt-2">
                   Precast Construction Management
                 </span>
               </h1>
-              <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+              <p className="text-xl text-slate-700 mb-8 max-w-3xl mx-auto">
                 จัดการและติดตามการทำงานของเครนในโครงการ Precast ด้วยระบบที่ครอบคลุม
                 ตั้งแต่การจองคิวงานจนถึงบันทึกผลการทำงาน
               </p>
@@ -2775,7 +2868,7 @@ export default function PrecastApp(){
                 <Button
                   size="lg"
                   onClick={() => setScreen("login")}
-                  className="bg-white text-blue-700 hover:bg-blue-50 px-8 py-3"
+                  className="bg-white text-black hover:bg-slate-50 px-8 py-3"
                 >
                   <LogIn className="h-5 w-5 mr-2" />
                   เข้าสู่ระบบ
@@ -2783,7 +2876,8 @@ export default function PrecastApp(){
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-white text-white hover:bg-white hover:text-blue-700 px-8 py-3"
+                  onClick={() => setScreen("guest")}
+                  className="border-slate-300 text-black hover:bg-slate-50 px-8 py-3"
                 >
                   <HardHat className="h-5 w-5 mr-2" />
                   สำรวจฟีเจอร์
@@ -3040,6 +3134,63 @@ export default function PrecastApp(){
     );
   }
 
+  // GUEST / before-login view: allow browsing without actions or dropdowns
+  if (screen === "guest") {
+    const displayCranes = guestCranes && guestCranes.length > 0 ? guestCranes : initialCranes;
+
+    return (
+      <Shell>
+        <Topbar right={<Button onClick={() => setScreen("login")}><LogIn className="h-4 w-4 mr-2"/>Login</Button>} title="ดูสถานะเครน (ผู้เยี่ยมชม)" />
+
+        <main className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-slate-100 text-slate-700">แสดงผลสำหรับผู้เยี่ยมชม</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={loadGuestCranes} disabled={guestLoading}>↻ Refresh</Button>
+            </div>
+          </div>
+
+          <Card className="rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-base">สถานะเครน</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600">คุณสามารถดูคิวงานและสถานะปัจจุบันได้ แต่จะไม่สามารถเริ่ม/หยุดงานหรือเปิดเมนู Dropdown ได้</p>
+            </CardContent>
+          </Card>
+
+          {guestLoading ? (
+            <Card className="rounded-2xl">
+              <CardContent className="text-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900 mx-auto mb-4" />
+                <div className="text-slate-600">กำลังโหลดข้อมูลเครน...</div>
+              </CardContent>
+            </Card>
+          ) : guestError ? (
+            <Card className="rounded-2xl">
+              <CardContent className="text-center py-8">
+                <div className="text-red-600 mb-2">เกิดข้อผิดพลาด: {guestError}</div>
+                <Button onClick={loadGuestCranes}>ลองใหม่</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayCranes.map(c => (
+                <CraneTable key={c.id} crane={c} bookings={[]} showActions={false} onStart={()=>{}} onStop={()=>{}} onRollback={()=>{}} />
+              ))}
+            </div>
+          )}
+
+          <div className="text-center">
+            <Button size="lg" onClick={() => setScreen("login")} className="bg-blue-600 hover:bg-blue-700 px-8 py-3">
+              เข้าสู่ระบบเพื่อจัดการ
+            </Button>
+          </div>
+        </main>
+      </Shell>
+    );
+  }
+
   if(screen === "login"){
     return (
       <Shell>
@@ -3236,15 +3387,10 @@ function HistoryView({ authToken }: { authToken?: string | null }){
     };
   }, [authToken]);
 
-  // Effect for initial load
+  // Effect: refresh when crane or searchQuery changes
   useEffect(() => {
     refreshHistory(crane, searchQuery);
-  }, []); // Empty dependency array - only run on mount
-
-  // Effect for crane filter changes (immediate)
-  useEffect(() => {
-    refreshHistory(crane, searchQuery);
-  }, [crane, refreshHistory]);
+  }, [crane, searchQuery, refreshHistory]);
 
   // Handle debounced search
   const handleSearchChange = (value: string) => {
